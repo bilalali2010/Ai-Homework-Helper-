@@ -13,17 +13,32 @@ export default function Home() {
 
     setLoading(true);
 
-    const formData = new FormData();
-    formData.append("image", file);
+    try {
+      // STEP 1: OCR
+      const formData = new FormData();
+      formData.append("image", file);
 
-    const res = await fetch("/api/solve", {
-      method: "POST",
-      body: formData
-    });
+      const ocrRes = await fetch("/api/ocr", {
+        method: "POST",
+        body: formData
+      });
 
-    const data = await res.json();
+      const ocrData = await ocrRes.json();
 
-    setResult(data.solution);
+      // STEP 2: AI SOLVE
+      const aiRes = await fetch("/api/solve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: ocrData.text })
+      });
+
+      const aiData = await aiRes.json();
+
+      setResult(aiData.solution);
+    } catch (err) {
+      setResult("Error processing image");
+    }
+
     setLoading(false);
   }
 
