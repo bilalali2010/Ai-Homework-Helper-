@@ -9,12 +9,18 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   async function handleSolve() {
-    if (!file) return;
+    if (!file) {
+      setResult("Please upload an image first.");
+      return;
+    }
 
     setLoading(true);
+    setResult("");
 
     try {
+      // =========================
       // STEP 1: OCR
+      // =========================
       const formData = new FormData();
       formData.append("image", file);
 
@@ -23,20 +29,63 @@ export default function Home() {
         body: formData
       });
 
+      if (!ocrRes.ok) {
+        setLoading(false);
+        setResult("OCR request failed.");
+        return;
+      }
+
       const ocrData = await ocrRes.json();
 
+      console.log("OCR DATA:", ocrData);
+
+      if (ocrData.error) {
+        setLoading(false);
+        setResult(`OCR Error: ${ocrData.error}`);
+        return;
+      }
+
+      // =========================
       // STEP 2: AI SOLVE
+      // =========================
       const aiRes = await fetch("/api/solve", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: ocrData.text })
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text: ocrData.text
+        })
       });
+
+      if (!aiRes.ok) {
+        setLoading(false);
+        setResult("AI request failed.");
+        return;
+      }
 
       const aiData = await aiRes.json();
 
-      setResult(aiData.solution);
-    } catch (err) {
-      setResult("Error processing image");
+      console.log("AI DATA:", aiData);
+
+      // =========================
+      // ERROR HANDLING
+      // =========================
+      if (aiData.error) {
+        setResult(
+          typeof aiData.error === "string"
+            ? aiData.error
+            : JSON.stringify(aiData.error, null, 2)
+        );
+      } else {
+        setResult(aiData.solution || "No solution returned.");
+      }
+    } catch (err: any) {
+      console.log("FRONTEND ERROR:", err);
+
+      setResult(
+        err?.message || "Something went wrong while processing."
+      );
     }
 
     setLoading(false);
@@ -44,21 +93,29 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>AI Homework Helper 🚀</h1>
+      <h1 className={styles.title}>
+        AI Homework Helper 🚀
+      </h1>
 
       <input
         type="file"
         accept="image/*"
-        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        onChange={(e) =>
+          setFile(e.target.files?.[0] || null)
+        }
       />
 
-      <button className={styles.button} onClick={handleSolve}>
-        Solve Homework
+      <button
+        className={styles.button}
+        onClick={handleSolve}
+        disabled={loading}
+      >
+        {loading ? "Processing..." : "Solve Homework"}
       </button>
 
-      {loading && <p>Processing...</p>}
-
-      <pre className={styles.result}>{result}</pre>
+      <pre className={styles.result}>
+        {result}
+      </pre>
     </div>
   );
 }
