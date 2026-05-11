@@ -1,11 +1,13 @@
 {
-  "name": "ai-homework-saas",
+  "name": "ai-homework-helper",
   "version": "1.0.0",
   "private": true,
+  "description": "AI-powered homework solver with OCR + multi-model AI fallback",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -13,5 +15,11 @@
     "react-dom": "18.3.1",
     "axios": "^1.7.2",
     "tesseract.js": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.30",
+    "@types/react": "18.2.79",
+    "@types/react-dom": "18.2.25",
+    "typescript": "5.5.4"
   }
 }
