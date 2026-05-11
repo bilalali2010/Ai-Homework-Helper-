@@ -1,29 +1,40 @@
 import { NextResponse } from "next/server";
-import { extractText } from "@/lib/ocr";
-import { solveWithAI } from "@/lib/aiRouter";
+import axios from "axios";
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("image") as File;
+    const { text } = await req.json();
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    const base64 = `data:image/png;base64,${buffer.toString("base64")}`;
-
-    const text = await extractText(base64);
-    const solution = await solveWithAI(text);
+    const response = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model: "google/gemma-7b-it:free",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a teacher. Solve step-by-step clearly and simply."
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ]
+      },
+      {
+        timeout: 15000,
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`
+        }
+      }
+    );
 
     return NextResponse.json({
-      success: true,
-      extractedText: text,
-      solution
+      solution: response.data.choices[0].message.content
     });
   } catch (err) {
     return NextResponse.json({
-      success: false,
-      error: "Failed to process image"
+      error: "AI failed"
     });
   }
 }
