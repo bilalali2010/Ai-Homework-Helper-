@@ -1,6 +1,9 @@
-import Tesseract from "tesseract.js";
-
 export async function extractText(imageBase64: string) {
-  const result = await Tesseract.recognize(imageBase64, "eng");
-  return result.data.text;
+  const Tesseract = (await import("tesseract.js")).default;
+
+  const result = await Tesseract.recognize(imageBase64, "eng", {
+    logger: () => {}
+  });
+
+  return result.data.text.slice(0, 2000);
 }
