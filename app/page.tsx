@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import styles from "./page.module.css";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -27,8 +28,8 @@ export default function Home() {
   }
 
   return (
-    <div style={{ padding: 30, fontFamily: "sans-serif" }}>
-      <h1>🚀 AI Homework Helper</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>AI Homework Helper 🚀</h1>
 
       <input
         type="file"
@@ -36,15 +37,13 @@ export default function Home() {
         onChange={(e) => setFile(e.target.files?.[0] || null)}
       />
 
-      <button onClick={handleSolve} style={{ marginLeft: 10 }}>
-        Solve
+      <button className={styles.button} onClick={handleSolve}>
+        Solve Homework
       </button>
 
       {loading && <p>Processing...</p>}
 
-      <pre style={{ marginTop: 20, whiteSpace: "pre-wrap" }}>
-        {result}
-      </pre>
+      <pre className={styles.result}>{result}</pre>
     </div>
   );
 }
