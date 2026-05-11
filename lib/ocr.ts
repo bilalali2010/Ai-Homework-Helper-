@@ -1,15 +1,6 @@
 import Tesseract from "tesseract.js";
 
-export async function extractText(image: string) {
-  const result = await Tesseract.recognize(image, "eng");
-
-  let text = result.data.text;
-
-  // cleanup layer
-  text = text
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return text;
+export async function extractText(imageBase64: string) {
+  const result = await Tesseract.recognize(imageBase64, "eng");
+  return result.data.text;
 }
