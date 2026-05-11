@@ -7,13 +7,12 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("image") as File;
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
     const base64 = `data:image/png;base64,${buffer.toString("base64")}`;
 
-    // OCR
     const text = await extractText(base64);
-
-    // AI solve
     const solution = await solveWithAI(text);
 
     return NextResponse.json({
@@ -24,7 +23,7 @@ export async function POST(req: Request) {
   } catch (err) {
     return NextResponse.json({
       success: false,
-      error: "Processing failed"
+      error: "Failed to process image"
     });
   }
 }
