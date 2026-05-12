@@ -1,20 +1,74 @@
 import { NextResponse } from "next/server";
+import Tesseract from "tesseract.js";
+import sharp from "sharp";
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("image") as File;
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const base64 = buffer.toString("base64");
+    if (!file) {
+      return NextResponse.json({
+        success: false,
+        error: "No image uploaded"
+      });
+    }
 
-    // ⚡ TEMP FIX: skip heavy OCR if stuck
+    // =========================
+    // READ IMAGE
+    // =========================
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // =========================
+    // IMAGE PREPROCESSING
+    // =========================
+    const processedImage = await sharp(buffer)
+      .grayscale()
+      .normalize()
+      .sharpen()
+      .resize({
+        width: 1800,
+        withoutEnlargement: true
+      })
+      .png()
+      .toBuffer();
+
+    const base64 = `data:image/png;base64,${processedImage.toString(
+      "base64"
+    )}`;
+
+    // =========================
+    // OCR
+    // =========================
+    const result = await Tesseract.recognize(
+      base64,
+      "eng",
+      {
+        logger: () => {},
+        tessedit_pageseg_mode: "6"
+      }
+    );
+
+    // =========================
+    // CLEAN TEXT
+    // =========================
+    const cleanedText = result.data.text
+      .replace(/\n{2,}/g, "\n")
+      .replace(/[^\x20-\x7E\n]/g, "")
+      .trim()
+      .slice(0, 4000);
+
     return NextResponse.json({
-      text: "OCR temporarily simplified for stability. Please retry or use clearer image."
+      success: true,
+      text: cleanedText
     });
-  } catch (err) {
+  } catch (err: any) {
+    console.log("OCR ERROR:", err);
+
     return NextResponse.json({
-      error: "OCR failed"
+      success: false,
+      error: err.message || "OCR failed"
     });
   }
 }
