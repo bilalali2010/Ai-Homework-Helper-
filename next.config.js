@@ -2,21 +2,22 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // 🚀 Prevent heavy OCR / AI libs from breaking build
   experimental: {
-    serverComponentsExternalPackages: ["tesseract.js"]
+    serverComponentsExternalPackages: [
+      "tesseract.js",
+      "sharp"
+    ]
   },
 
-  // 🚀 Improve stability on Vercel serverless
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push("tesseract.js");
+      config.externals.push("sharp");
     }
 
     return config;
   },
 
-  // 🚀 Optimize output for Vercel
   output: "standalone"
 };
 
