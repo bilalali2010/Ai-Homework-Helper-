@@ -45,8 +45,7 @@ export async function POST(req: Request) {
       base64,
       "eng",
       {
-        logger: () => {},
-        tessedit_pageseg_mode: "6"
+        logger: () => {}
       }
     );
 
