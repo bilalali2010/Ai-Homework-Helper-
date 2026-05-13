@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-export const maxDuration = 30;
-
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -15,20 +12,26 @@ export async function POST(req: Request) {
       });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
     const base64 = buffer.toString("base64");
 
-    const response = await fetch("https://api.ocr.space/parse/image", {
-      method: "POST",
-      headers: {
-        apikey: process.env.OCR_SPACE_API_KEY!
-      },
-      body: new URLSearchParams({
-        base64Image: `data:image/png;base64,${base64}`,
-        language: "eng",
-        isOverlayRequired: "false"
-      })
-    });
+    // 🔥 CLOUD OCR (FREE + RELIABLE fallback approach)
+    const response = await fetch(
+      "https://api.ocr.space/parse/image",
+      {
+        method: "POST",
+        headers: {
+          apikey: "helloworld"
+        },
+        body: new URLSearchParams({
+          base64Image: `data:image/png;base64,${base64}`,
+          language: "eng",
+          isOverlayRequired: "false"
+        })
+      }
+    );
 
     const data = await response.json();
 
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      text: text.trim().slice(0, 4000)
+      text: text.trim()
     });
   } catch (err: any) {
     return NextResponse.json({
