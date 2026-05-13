@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import Tesseract from "tesseract.js";
-import sharp from "sharp";
+
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
@@ -14,57 +15,31 @@ export async function POST(req: Request) {
       });
     }
 
-    // =========================
-    // READ IMAGE
-    // =========================
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64 = buffer.toString("base64");
 
-    // =========================
-    // IMAGE PREPROCESSING
-    // =========================
-    const processedImage = await sharp(buffer)
-      .grayscale()
-      .normalize()
-      .sharpen()
-      .resize({
-        width: 1800,
-        withoutEnlargement: true
+    const response = await fetch("https://api.ocr.space/parse/image", {
+      method: "POST",
+      headers: {
+        apikey: process.env.OCR_SPACE_API_KEY!
+      },
+      body: new URLSearchParams({
+        base64Image: `data:image/png;base64,${base64}`,
+        language: "eng",
+        isOverlayRequired: "false"
       })
-      .png()
-      .toBuffer();
+    });
 
-    const base64 = `data:image/png;base64,${processedImage.toString(
-      "base64"
-    )}`;
+    const data = await response.json();
 
-    // =========================
-    // OCR
-    // =========================
-    const result = await Tesseract.recognize(
-      base64,
-      "eng",
-      {
-        logger: () => {}
-      }
-    );
-
-    // =========================
-    // CLEAN TEXT
-    // =========================
-    const cleanedText = result.data.text
-      .replace(/\n{2,}/g, "\n")
-      .replace(/[^\x20-\x7E\n]/g, "")
-      .trim()
-      .slice(0, 4000);
+    const text =
+      data?.ParsedResults?.[0]?.ParsedText || "";
 
     return NextResponse.json({
       success: true,
-      text: cleanedText
+      text: text.trim().slice(0, 4000)
     });
   } catch (err: any) {
-    console.log("OCR ERROR:", err);
-
     return NextResponse.json({
       success: false,
       error: err.message || "OCR failed"
