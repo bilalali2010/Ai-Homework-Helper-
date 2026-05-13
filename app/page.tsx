@@ -29,21 +29,21 @@ export default function Home() {
         body: formData
       });
 
-      if (!ocrRes.ok) {
-        setLoading(false);
-        setResult("OCR request failed.");
-        return;
+      const ocrData = await ocrRes.json().catch(() => null);
+
+      if (!ocrRes.ok || !ocrData) {
+        throw new Error("OCR failed or invalid response");
       }
-
-      const ocrData = await ocrRes.json();
-
-      console.log("OCR DATA:", ocrData);
 
       if (ocrData.error) {
-        setLoading(false);
-        setResult(`OCR Error: ${ocrData.error}`);
-        return;
+        throw new Error(`OCR Error: ${ocrData.error}`);
       }
+
+      if (!ocrData.text) {
+        throw new Error("No text extracted from image");
+      }
+
+      console.log("OCR DATA:", ocrData);
 
       // =========================
       // STEP 2: AI SOLVE
@@ -58,44 +58,34 @@ export default function Home() {
         })
       });
 
-      if (!aiRes.ok) {
-        setLoading(false);
-        setResult("AI request failed.");
-        return;
-      }
+      const aiData = await aiRes.json().catch(() => null);
 
-      const aiData = await aiRes.json();
+      if (!aiRes.ok || !aiData) {
+        throw new Error("AI request failed or invalid response");
+      }
 
       console.log("AI DATA:", aiData);
 
-      // =========================
-      // ERROR HANDLING
-      // =========================
       if (aiData.error) {
-        setResult(
+        throw new Error(
           typeof aiData.error === "string"
             ? aiData.error
-            : JSON.stringify(aiData.error, null, 2)
+            : JSON.stringify(aiData.error)
         );
-      } else {
-        setResult(aiData.solution || "No solution returned.");
       }
+
+      setResult(aiData.solution || "No solution returned.");
     } catch (err: any) {
       console.log("FRONTEND ERROR:", err);
-
-      setResult(
-        err?.message || "Something went wrong while processing."
-      );
+      setResult(err?.message || "Something went wrong while processing.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>
-        AI Homework Helper 🚀
-      </h1>
+      <h1 className={styles.title}>AI Homework Helper 🚀</h1>
 
       <input
         type="file"
@@ -113,9 +103,7 @@ export default function Home() {
         {loading ? "Processing..." : "Solve Homework"}
       </button>
 
-      <pre className={styles.result}>
-        {result}
-      </pre>
+      <pre className={styles.result}>{result}</pre>
     </div>
   );
 }
