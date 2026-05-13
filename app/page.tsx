@@ -8,19 +8,22 @@ export default function Home() {
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
+  const [question, setQuestion] = useState("");
+  const [context, setContext] = useState("");
+
   async function handleSolve() {
     if (!file) {
-      setResult("⚠️ Please upload an image first.");
+      setResult("Please upload an image first.");
       return;
     }
 
     setLoading(true);
     setResult("");
+    setChat([]);
 
     try {
-      // =========================
-      // STEP 1: OCR
-      // =========================
+      // OCR
       const formData = new FormData();
       formData.append("image", file);
 
@@ -31,54 +34,64 @@ export default function Home() {
 
       const ocrData = await ocrRes.json();
 
-      console.log("OCR DATA:", ocrData);
-
-      // ❌ FIX: handle empty OCR properly
-      if (!ocrRes.ok || ocrData.error) {
-        setResult(`❌ OCR Error: ${ocrData.error || "Failed to process image"}`);
+      if (!ocrData.text?.trim()) {
+        setResult("No text extracted from image.");
         return;
       }
 
-      if (!ocrData.text || !ocrData.text.trim()) {
-        setResult("❌ No text extracted from image. Try a clearer image.");
-        return;
-      }
+      setContext(ocrData.text);
 
-      // =========================
-      // STEP 2: AI SOLVE
-      // =========================
+      // Solve
       const aiRes = await fetch("/api/solve", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          text: ocrData.text
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: ocrData.text })
       });
 
       const aiData = await aiRes.json();
 
-      console.log("AI DATA:", aiData);
+      setResult(aiData.solution || "No solution found.");
 
-      if (!aiRes.ok || aiData.error) {
-        setResult(
-          `❌ AI Error: ${
-            typeof aiData.error === "string"
-              ? aiData.error
-              : JSON.stringify(aiData.error)
-          }`
-        );
-        return;
-      }
-
-      setResult(aiData.solution || "No solution returned.");
+      // initialize chat history
+      setChat([
+        {
+          role: "assistant",
+          content: aiData.solution
+        }
+      ]);
     } catch (err: any) {
-      console.log("FRONTEND ERROR:", err);
-      setResult(err?.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
+      setResult(err.message);
     }
+
+    setLoading(false);
+  }
+
+  async function sendMessage() {
+    if (!question.trim()) return;
+
+    const newChat = [
+      ...chat,
+      { role: "user", content: question }
+    ];
+
+    setChat(newChat);
+    setQuestion("");
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        context,
+        messages: newChat
+      })
+    });
+
+    const data = await res.json();
+
+    setChat([
+      ...newChat,
+      { role: "assistant", content: data.reply }
+    ]);
   }
 
   return (
@@ -91,17 +104,43 @@ export default function Home() {
         onChange={(e) => setFile(e.target.files?.[0] || null)}
       />
 
-      <button
-        className={styles.button}
-        onClick={handleSolve}
-        disabled={loading}
-      >
+      <button onClick={handleSolve} disabled={loading}>
         {loading ? "Processing..." : "Solve Homework"}
       </button>
 
-      <pre className={styles.result}>
-        {result}
-      </pre>
+      <pre className={styles.result}>{result}</pre>
+
+      {/* ================= CHATBOX ================= */}
+      {chat.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <h3>Ask follow-up questions</h3>
+
+          <div
+            style={{
+              border: "1px solid #ccc",
+              padding: 10,
+              height: 250,
+              overflowY: "auto"
+            }}
+          >
+            {chat.map((m, i) => (
+              <div key={i}>
+                <b>{m.role}:</b> {m.content}
+                <hr />
+              </div>
+            ))}
+          </div>
+
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask about solution..."
+            style={{ width: "80%" }}
+          />
+
+          <button onClick={sendMessage}>Send</button>
+        </div>
+      )}
     </div>
   );
 }
