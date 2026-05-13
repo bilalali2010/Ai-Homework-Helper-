@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import styles from "./page.module.css";
-import ChatWidget from "@/components/ChatWidget";
+
+// ✅ FIXED IMPORT (NO @/ alias issue)
+import ChatWidget from "../components/ChatWidget";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -42,10 +44,10 @@ export default function Home() {
         return;
       }
 
-      // ✅ IMPORTANT FIX (your issue)
+      // ✅ FIX: empty text check
       if (!ocrData.text || !ocrData.text.trim()) {
         setLoading(false);
-        setResult("❌ No text extracted from image. Try a clearer image.");
+        setResult("❌ No text extracted. Try a clearer image.");
         return;
       }
 
@@ -76,17 +78,10 @@ export default function Home() {
         return;
       }
 
-      console.log("AI DATA:", aiData);
-
-      setResult(
-        aiData.solution || "No solution returned from AI."
-      );
+      setResult(aiData.solution || "No solution returned.");
     } catch (err: any) {
       console.log("FRONTEND ERROR:", err);
-
-      setResult(
-        err?.message || "Something went wrong."
-      );
+      setResult(err?.message || "Something went wrong.");
     }
 
     setLoading(false);
@@ -94,17 +89,17 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      {/* HEADER */}
+      {/* TITLE */}
       <h1 className={styles.title}>
         AI Homework Helper 🚀
       </h1>
 
-      <p style={{ color: "#666", marginBottom: 15 }}>
-        Upload a clear image of your homework and get step-by-step AI solutions.
-        You can also chat with AI using the floating assistant.
+      {/* DESCRIPTION */}
+      <p style={{ textAlign: "center", color: "#666" }}>
+        This tool solves homework step-by-step using AI and also lets you chat about solutions.
       </p>
 
-      {/* FILE INPUT */}
+      {/* UPLOAD */}
       <input
         type="file"
         accept="image/*"
