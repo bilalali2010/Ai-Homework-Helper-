@@ -4,7 +4,9 @@ import { useState } from "react";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<
+    { role: string; content: string }[]
+  >([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,22 +22,40 @@ export default function ChatWidget() {
     setInput("");
     setLoading(true);
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: newMessages })
-    });
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages })
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    setLoading(false);
-
-    if (data.reply) {
+      if (data.reply) {
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: data.reply }
+        ]);
+      } else {
+        setMessages([
+          ...newMessages,
+          {
+            role: "assistant",
+            content: "Error: No response from AI"
+          }
+        ]);
+      }
+    } catch (err: any) {
       setMessages([
         ...newMessages,
-        { role: "assistant", content: data.reply }
+        {
+          role: "assistant",
+          content: err.message || "Chat failed"
+        }
       ]);
     }
+
+    setLoading(false);
   }
 
   return (
@@ -47,33 +67,35 @@ export default function ChatWidget() {
           position: "fixed",
           bottom: 20,
           right: 20,
-          padding: 16,
+          width: 55,
+          height: 55,
           borderRadius: "50%",
           background: "#111",
-          color: "#fff",
+          color: "white",
           fontSize: 20,
-          zIndex: 9999
+          zIndex: 9999,
+          cursor: "pointer"
         }}
       >
         💬
       </button>
 
-      {/* Chat Box */}
+      {/* Chat Window */}
       {open && (
         <div
           style={{
             position: "fixed",
-            bottom: 80,
+            bottom: 90,
             right: 20,
-            width: 350,
-            height: 500,
+            width: 360,
+            height: 520,
             background: "#0f0f0f",
-            color: "white",
             borderRadius: 12,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            zIndex: 9999
+            zIndex: 9999,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.4)"
           }}
         >
           {/* Header */}
@@ -81,22 +103,23 @@ export default function ChatWidget() {
             style={{
               padding: 12,
               background: "#1a1a1a",
+              color: "white",
               fontWeight: "bold"
             }}
           >
             AI Homework Chat Assistant
           </div>
 
-          {/* Info bar */}
+          {/* Info */}
           <div
             style={{
-              fontSize: 12,
               padding: 8,
+              fontSize: 12,
               color: "#aaa",
               background: "#151515"
             }}
           >
-            Ask follow-up questions about your solution
+            Ask questions about your solution or concepts
           </div>
 
           {/* Messages */}
@@ -104,16 +127,17 @@ export default function ChatWidget() {
             style={{
               flex: 1,
               padding: 10,
-              overflowY: "auto"
+              overflowY: "auto",
+              color: "white"
             }}
           >
             {messages.map((m, i) => (
               <div
                 key={i}
                 style={{
-                  marginBottom: 10,
                   textAlign:
-                    m.role === "user" ? "right" : "left"
+                    m.role === "user" ? "right" : "left",
+                  marginBottom: 10
                 }}
               >
                 <div
@@ -135,7 +159,7 @@ export default function ChatWidget() {
 
             {loading && (
               <div style={{ color: "#888" }}>
-                AI is thinking...
+                AI is typing...
               </div>
             )}
           </div>
@@ -145,7 +169,7 @@ export default function ChatWidget() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask follow-up question..."
+              placeholder="Ask something..."
               style={{
                 flex: 1,
                 padding: 10,
