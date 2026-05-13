@@ -10,7 +10,7 @@ export default function Home() {
 
   async function handleSolve() {
     if (!file) {
-      setResult("Please upload an image first.");
+      setResult("⚠️ Please upload an image first.");
       return;
     }
 
@@ -29,21 +29,20 @@ export default function Home() {
         body: formData
       });
 
-      const ocrData = await ocrRes.json().catch(() => null);
-
-      if (!ocrRes.ok || !ocrData) {
-        throw new Error("OCR failed or invalid response");
-      }
-
-      if (ocrData.error) {
-        throw new Error(`OCR Error: ${ocrData.error}`);
-      }
-
-      if (!ocrData.text) {
-        throw new Error("No text extracted from image");
-      }
+      const ocrData = await ocrRes.json();
 
       console.log("OCR DATA:", ocrData);
+
+      // ❌ FIX: handle empty OCR properly
+      if (!ocrRes.ok || ocrData.error) {
+        setResult(`❌ OCR Error: ${ocrData.error || "Failed to process image"}`);
+        return;
+      }
+
+      if (!ocrData.text || !ocrData.text.trim()) {
+        setResult("❌ No text extracted from image. Try a clearer image.");
+        return;
+      }
 
       // =========================
       // STEP 2: AI SOLVE
@@ -58,26 +57,25 @@ export default function Home() {
         })
       });
 
-      const aiData = await aiRes.json().catch(() => null);
-
-      if (!aiRes.ok || !aiData) {
-        throw new Error("AI request failed or invalid response");
-      }
+      const aiData = await aiRes.json();
 
       console.log("AI DATA:", aiData);
 
-      if (aiData.error) {
-        throw new Error(
-          typeof aiData.error === "string"
-            ? aiData.error
-            : JSON.stringify(aiData.error)
+      if (!aiRes.ok || aiData.error) {
+        setResult(
+          `❌ AI Error: ${
+            typeof aiData.error === "string"
+              ? aiData.error
+              : JSON.stringify(aiData.error)
+          }`
         );
+        return;
       }
 
       setResult(aiData.solution || "No solution returned.");
     } catch (err: any) {
       console.log("FRONTEND ERROR:", err);
-      setResult(err?.message || "Something went wrong while processing.");
+      setResult(err?.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -90,9 +88,7 @@ export default function Home() {
       <input
         type="file"
         accept="image/*"
-        onChange={(e) =>
-          setFile(e.target.files?.[0] || null)
-        }
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
       />
 
       <button
@@ -103,7 +99,9 @@ export default function Home() {
         {loading ? "Processing..." : "Solve Homework"}
       </button>
 
-      <pre className={styles.result}>{result}</pre>
+      <pre className={styles.result}>
+        {result}
+      </pre>
     </div>
   );
 }
