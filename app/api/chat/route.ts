@@ -7,19 +7,17 @@ const MODELS = [
 
 export async function POST(req: Request) {
   try {
-    const { context, messages } = await req.json();
+    const { messages } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({
-        reply: "Invalid chat messages"
+        success: false,
+        error: "Messages are required"
       });
     }
 
     let lastError: any = null;
 
-    // =========================
-    // TRY MODELS ONE BY ONE
-    // =========================
     for (const model of MODELS) {
       try {
         const res = await fetch(
@@ -28,34 +26,21 @@ export async function POST(req: Request) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              Authorization: `Bearer ${process.env.OPENROUTER_API_KEY!}`,
               "HTTP-Referer": "https://ai-homework-helper.vercel.app",
-              "X-Title": "AI Homework Helper"
+              "X-Title": "AI Homework Helper Chat"
             },
             body: JSON.stringify({
               model,
               messages: [
                 {
                   role: "system",
-                  content: `
-You are an expert AI tutor.
-
-You are helping a student understand a homework solution.
-
-Original problem context:
-${context}
-
-Rules:
-- Explain clearly and simply
-- Break steps if needed
-- Be friendly and educational
-- If user is confused, re-explain in simpler way
-`
+                  content:
+                    "You are a professional AI tutor. Help students understand solutions clearly and simply."
                 },
                 ...messages
               ],
-              temperature: 0.3,
-              max_tokens: 1200
+              temperature: 0.3
             })
           }
         );
@@ -76,20 +61,14 @@ Rules:
       }
     }
 
-    // =========================
-    // ALL MODELS FAILED
-    // =========================
     return NextResponse.json({
       success: false,
-      reply:
-        typeof lastError === "string"
-          ? lastError
-          : "All chat models failed"
+      error: lastError || "All models failed"
     });
   } catch (err: any) {
     return NextResponse.json({
       success: false,
-      reply: err.message || "Server error"
+      error: err.message
     });
   }
 }
