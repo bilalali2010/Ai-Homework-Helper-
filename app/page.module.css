@@ -96,6 +96,7 @@
   overflow-y: auto;
   margin-bottom: 20px;
   padding-right: 4px;
+  scroll-behavior: smooth;
 }
 
 .userMessage {
@@ -105,6 +106,7 @@
   border-radius: 16px;
   max-width: 75%;
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .aiMessage {
@@ -114,6 +116,7 @@
   border-radius: 16px;
   max-width: 75%;
   line-height: 1.6;
+  word-break: break-word;
 }
 
 .chatInputContainer {
@@ -176,4 +179,28 @@
   padding: 16px;
   border-radius: 12px;
   overflow-x: auto;
+}
+
+.aiTyping {
+  align-self: flex-start;
+  background: #1f2937;
+  padding: 14px;
+  border-radius: 16px;
+  max-width: 75%;
+  opacity: 0.8;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.5;
+  }
 }
