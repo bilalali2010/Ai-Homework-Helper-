@@ -3,17 +3,23 @@
 import { useState } from "react";
 import styles from "./page.module.css";
 
-// ✅ FIXED IMPORT (NO @/ alias issue)
-import ChatWidget from "../components/ChatWidget";
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
   async function handleSolve() {
     if (!file) {
-      setResult("⚠️ Please upload an image first.");
+      setResult("Please upload an image first.");
       return;
     }
 
@@ -21,109 +27,175 @@ export default function Home() {
     setResult("");
 
     try {
-      // =========================
-      // STEP 1: OCR
-      // =========================
+      // OCR
       const formData = new FormData();
       formData.append("image", file);
 
       const ocrRes = await fetch("/api/ocr", {
         method: "POST",
-        body: formData
+        body: formData,
       });
 
       const ocrData = await ocrRes.json();
 
-      if (!ocrRes.ok || ocrData.error) {
+      if (ocrData.error || !ocrData.text?.trim()) {
+        setResult("No text extracted from image. Try a clearer image.");
         setLoading(false);
-        setResult(
-          typeof ocrData.error === "string"
-            ? ocrData.error
-            : "OCR failed. Try a clearer image."
-        );
         return;
       }
 
-      // ✅ FIX: empty text check
-      if (!ocrData.text || !ocrData.text.trim()) {
-        setLoading(false);
-        setResult("❌ No text extracted. Try a clearer image.");
-        return;
-      }
-
-      console.log("OCR DATA:", ocrData);
-
-      // =========================
-      // STEP 2: AI SOLVE
-      // =========================
+      // AI Solve
       const aiRes = await fetch("/api/solve", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: ocrData.text
-        })
+          text: ocrData.text,
+        }),
       });
 
       const aiData = await aiRes.json();
 
-      if (!aiRes.ok || aiData.error) {
-        setLoading(false);
+      if (aiData.error) {
         setResult(
           typeof aiData.error === "string"
             ? aiData.error
-            : "AI failed to solve the problem."
+            : JSON.stringify(aiData.error, null, 2)
         );
-        return;
-      }
+      } else {
+        setResult(aiData.solution);
 
-      setResult(aiData.solution || "No solution returned.");
+        setMessages([
+          {
+            role: "assistant",
+            content: aiData.solution,
+          },
+        ]);
+      }
     } catch (err: any) {
-      console.log("FRONTEND ERROR:", err);
-      setResult(err?.message || "Something went wrong.");
+      setResult(err.message || "Something went wrong");
     }
 
     setLoading(false);
   }
 
+  async function sendMessage() {
+    if (!chatInput.trim()) return;
+
+    const updatedMessages: Message[] = [
+      ...messages,
+      {
+        role: "user",
+        content: chatInput,
+      },
+    ];
+
+    setMessages(updatedMessages);
+
+    setChatInput("");
+    setChatLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: updatedMessages,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.reply) {
+        setMessages([
+          ...updatedMessages,
+          {
+            role: "assistant",
+            content: data.reply,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+
+    setChatLoading(false);
+  }
+
   return (
-    <div className={styles.container}>
-      {/* TITLE */}
-      <h1 className={styles.title}>
-        AI Homework Helper 🚀
-      </h1>
+    <main className={styles.container}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>AI Homework Helper 🚀</h1>
 
-      {/* DESCRIPTION */}
-      <p style={{ textAlign: "center", color: "#666" }}>
-        This tool solves homework step-by-step using AI and also lets you chat about solutions.
-      </p>
+        <p className={styles.subtitle}>
+          Upload homework images, get step-by-step solutions, and chat with AI
+          for deeper explanations.
+        </p>
 
-      {/* UPLOAD */}
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) =>
-          setFile(e.target.files?.[0] || null)
-        }
-      />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          className={styles.input}
+        />
 
-      {/* BUTTON */}
-      <button
-        className={styles.button}
-        onClick={handleSolve}
-        disabled={loading}
-      >
-        {loading ? "Processing..." : "Solve Homework"}
-      </button>
+        <button
+          onClick={handleSolve}
+          disabled={loading}
+          className={styles.button}
+        >
+          {loading ? "Processing..." : "Solve Homework"}
+        </button>
 
-      {/* RESULT */}
-      <pre className={styles.result}>
-        {result}
-      </pre>
+        {result && (
+          <div className={styles.resultBox}>
+            <h2>Solution</h2>
 
-      {/* FLOATING CHATBOT */}
-      <ChatWidget />
-    </div>
+            <pre className={styles.result}>{result}</pre>
+          </div>
+        )}
+
+        {messages.length > 0 && (
+          <div className={styles.chatContainer}>
+            <h2 className={styles.chatTitle}>Continue Chatting</h2>
+
+            <div className={styles.chatMessages}>
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={
+                    msg.role === "user"
+                      ? styles.userMessage
+                      : styles.aiMessage
+                  }
+                >
+                  {msg.content}
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.chatInputContainer}>
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask follow-up questions..."
+                className={styles.chatInput}
+              />
+
+              <button
+                onClick={sendMessage}
+                disabled={chatLoading}
+                className={styles.sendButton}
+              >
+                {chatLoading ? "..." : "Send"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
