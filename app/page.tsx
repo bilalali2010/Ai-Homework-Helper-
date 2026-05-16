@@ -15,28 +15,46 @@ type Message = {
 };
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState("");
+  const [file, setFile] =
+    useState<File | null>(null);
 
-  const [result, setResult] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] =
+    useState("");
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
+  const [result, setResult] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [messages, setMessages] =
+    useState<Message[]>([]);
+
+  const [chatInput, setChatInput] =
+    useState("");
+
+  const [chatLoading, setChatLoading] =
+    useState(false);
 
   const messagesEndRef =
     useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [messages]);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView(
+        {
+          behavior: "smooth",
+          block: "end",
+        }
+      );
+    }, 100);
+  }, [messages, chatLoading]);
 
   async function handleSolve() {
     if (!file) {
-      setResult("Please upload an image first.");
+      setResult(
+        "Please upload an image first."
+      );
       return;
     }
 
@@ -46,18 +64,25 @@ export default function Home() {
     try {
       // OCR
       const formData = new FormData();
+
       formData.append("image", file);
 
-      const ocrRes = await fetch("/api/ocr", {
-        method: "POST",
-        body: formData,
-      });
+      const ocrRes = await fetch(
+        "/api/ocr",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!ocrRes.ok) {
-        throw new Error("OCR request failed");
+        throw new Error(
+          "OCR request failed"
+        );
       }
 
-      const ocrData = await ocrRes.json();
+      const ocrData =
+        await ocrRes.json();
 
       if (
         ocrData.error ||
@@ -72,25 +97,34 @@ export default function Home() {
       }
 
       // AI Solve
-      const aiRes = await fetch("/api/solve", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: ocrData.text,
-        }),
-      });
+      const aiRes = await fetch(
+        "/api/solve",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            text: ocrData.text,
+          }),
+        }
+      );
 
       if (!aiRes.ok) {
-        throw new Error("AI solving failed");
+        throw new Error(
+          "AI solving failed"
+        );
       }
 
-      const aiData = await aiRes.json();
+      const aiData =
+        await aiRes.json();
 
       if (aiData.error) {
         setResult(
-          typeof aiData.error === "string"
+          typeof aiData.error ===
+            "string"
             ? aiData.error
             : JSON.stringify(
                 aiData.error,
@@ -104,7 +138,8 @@ export default function Home() {
         setMessages([
           {
             role: "assistant",
-            content: aiData.solution,
+            content:
+              aiData.solution,
           },
         ]);
       }
@@ -119,32 +154,44 @@ export default function Home() {
   }
 
   async function sendMessage() {
-    if (!chatInput.trim()) return;
+    if (
+      !chatInput.trim() ||
+      chatLoading
+    )
+      return;
 
-    const updatedMessages: Message[] = [
-      ...messages,
-      {
-        role: "user",
-        content: chatInput,
-      },
-    ];
+    const updatedMessages: Message[] =
+      [
+        ...messages,
+        {
+          role: "user",
+          content: chatInput,
+        },
+      ];
 
     setMessages(updatedMessages);
 
     setChatInput("");
+
     setChatLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify({
-          messages: updatedMessages,
-        }),
-      });
+      const res = await fetch(
+        "/api/chat",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            messages:
+              updatedMessages,
+          }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(
@@ -152,7 +199,8 @@ export default function Home() {
         );
       }
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (data.reply) {
         setMessages([
@@ -178,9 +226,10 @@ export default function Home() {
         </h1>
 
         <p className={styles.subtitle}>
-          Upload homework images, get
-          step-by-step solutions, and
-          chat with AI for deeper
+          Upload homework images,
+          get step-by-step
+          solutions, and chat with
+          AI for deeper
           explanations.
         </p>
 
@@ -208,7 +257,9 @@ export default function Home() {
           <img
             src={preview}
             alt="Preview"
-            className={styles.preview}
+            className={
+              styles.preview
+            }
           />
         )}
 
@@ -223,10 +274,18 @@ export default function Home() {
         </button>
 
         {result && (
-          <div className={styles.resultBox}>
+          <div
+            className={
+              styles.resultBox
+            }
+          >
             <h2>Solution</h2>
 
-            <div className={styles.result}>
+            <div
+              className={
+                styles.result
+              }
+            >
               <ReactMarkdown>
                 {result}
               </ReactMarkdown>
@@ -235,8 +294,16 @@ export default function Home() {
         )}
 
         {messages.length > 0 && (
-          <div className={styles.chatContainer}>
-            <h2 className={styles.chatTitle}>
+          <div
+            className={
+              styles.chatContainer
+            }
+          >
+            <h2
+              className={
+                styles.chatTitle
+              }
+            >
               Continue Chatting
             </h2>
 
@@ -246,7 +313,10 @@ export default function Home() {
               }
             >
               {messages.map(
-                (msg, index) => (
+                (
+                  msg,
+                  index
+                ) => (
                   <div
                     key={index}
                     className={
@@ -257,14 +327,28 @@ export default function Home() {
                     }
                   >
                     <ReactMarkdown>
-                      {msg.content}
+                      {
+                        msg.content
+                      }
                     </ReactMarkdown>
                   </div>
                 )
               )}
 
+              {chatLoading && (
+                <div
+                  className={
+                    styles.aiTyping
+                  }
+                >
+                  AI is thinking...
+                </div>
+              )}
+
               <div
-                ref={messagesEndRef}
+                ref={
+                  messagesEndRef
+                }
               />
             </div>
 
@@ -274,13 +358,17 @@ export default function Home() {
               }
             >
               <input
-                value={chatInput}
+                value={
+                  chatInput
+                }
                 onChange={(e) =>
                   setChatInput(
                     e.target.value
                   )
                 }
-                onKeyDown={(e) => {
+                onKeyDown={(
+                  e
+                ) => {
                   if (
                     e.key ===
                       "Enter" &&
